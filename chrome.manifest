@@ -1,0 +1,2 @@
+content   contextfont                 chrome/content/
+overlay   chrome://browser/content/browser.xul   chrome://contextfont/content/overlay.xul
