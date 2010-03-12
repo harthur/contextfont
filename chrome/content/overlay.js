@@ -11,7 +11,7 @@ contextfont = {
     return size + "px";
   },
 
-  getFont : function(element) {
+  getFontFamily : function(element) {
     // create canvas in owner doc to get @font-face fonts
     var doc = element.ownerDocument;
     var canvas = doc.createElementNS('http://www.w3.org/1999/xhtml', 'canvas');
@@ -43,72 +43,6 @@ contextfont = {
     return true;
   },
 
-  allFontFaces : function(doc) {
-    var fontFaces = {};
-    for(var i = 0; i < doc.styleSheets.length; i++) {
-      var rules = doc.styleSheets[i].cssRules;
-      for(var j = 0; j < rules.length; j++) {
-        var rule = rules[j];
-        if(rule.type == CSSRule.FONT_FACE_RULE) {
-          var fontFamily = rule.style.getPropertyValue("font-family");
-          var src = rule.style.getPropertyValue("src");
-          var weight = rule.style.getPropertyValue("font-weight");
-          var style = rule.style.getPropertyValue("font-style");
-          fontFaces[fontFamily] = src;
-        }
-      }
-    }
-    return fontFaces;
-  },
-
-  getFontFaceSrc : function(doc, fontFamily, fontWeight, fontStyle) {
-    for(var i = 0; i < doc.styleSheets.length; i++) {
-      var rules = doc.styleSheets[i].cssRules;
-      for(var j = 0; j < rules.length; j++) {
-        var rule = rules[j];
-        if(rule.type == CSSRule.FONT_FACE_RULE) {
-
-          var ffFamily = rule.style.getPropertyValue("font-family");
-          var ffSrc = rule.style.getPropertyValue("src");
-          var ffWeight = rule.style.getPropertyValue("font-weight");
-          var ffStyle = rule.style.getPropertyValue("font-style");
-
-          if(contextfont.sameFamily(ffFamily, fontFamily)
-             && contextfont.sameWeight(ffWeight, fontWeight) 
-             && contextfont.sameStyle(ffStyle, fontStyle))
-            return ffSrc;
-        }
-      }
-    }
-  },
-   
-  sameFamily : function(fontFamily, computedFamily) {
-    return fontFamily.replace(/['"]/g, '') ==
-      computedFamily.replace(/['"]/g, '');
-  },
-
-  sameWeight : function(fontWeight, computedWeight) {
-    if(fontWeight == computedWeight)
-      return true;
-
-    if(computedWeight == '400'
-       && (fontWeight == '' || fontWeight == 'normal'))
-      return true;
-    if(computedWeight == '700' && fontWeight == 'bold')
-      return true;
-    // bolder, lighter
-
-    return false;
-  },
-
-  sameStyle : function(fontStyle, computedFontStyle) {
-    if(fontStyle == computedFontStyle)
-      return true;
-    if(computedFontStyle == 'normal' && !fontStyle)
-      return true;
-    return false;
-  },
-
   normalizedWeight : function(weight) {
     if(weight == '400')
       return '';
@@ -123,38 +57,50 @@ contextfont = {
     return style;
   },
 
+
   menuShowing : function(event) {
-    var menuitem = document.getElementById("context-contextfont");
+    var separator = document.getElementById("context-contextfont-separator");
+    var font = document.getElementById("context-contextfont-font");
+    var fontface = document.getElementById("context-contextfont-fontface");
+    var download = document.getElementById("context-contextfont-download");
+    fontface.hidden = true;
+    download.hidden = true;
+
     if(!getBrowserSelection()) {
-      menuitem.hidden = true;
+      separator.hidden = true;
+      font.hidden = true;
       return;
     }
+    separator.hidden = false;
+    font.hidden = false;
+ 
     var selection = content.getSelection();
-    var elem = selection.focusNode;         // use getRangeAt to get all nodes
+    var elem = selection.focusNode;  // just use node at end of selection
     if(elem.nodeType != Node.ELEMENT_NODE)
       elem = elem.parentNode;
 
     var doc = elem.ownerDocument;
-    var style = doc.defaultView.getComputedStyle(elem, null);
+    var computed = doc.defaultView.getComputedStyle(elem, null);
 
-    var fontSize = contextfont.getFontSize(elem);
-    var fontFamily = contextfont.getFont(elem);
-    var fontWeight = style.fontWeight; //contextfont.getFontWeight(elem);
-    var fontStyle = style.fontStyle; //contextfont.getFontStyle(elem);
-    var src = contextfont.getFontFaceSrc(doc, fontFamily, fontWeight, fontStyle);
+    var size = this.getFontSize(elem);
+    var family = this.getFontFamily(elem);
     
-    var menuitem = document.getElementById("context-contextfont");
-    menuitem.hidden = false;
-    menuitem.label = fontSize + " ";
-    var weight = contextfont.normalizedWeight(fontWeight);
+    font.label = size + " ";
+    var weight = this.normalizedWeight(computed.fontWeight);
     if(weight)
-      menuitem.label += weight + " ";
-    var fontStyle = contextfont.normalizedStyle(fontStyle);
-    if(fontStyle)
-      menuitem.label += fontStyle + " ";
-    menuitem.label += fontFamily + " ";
-    if(src)
-      menuitem.label += src;
+      font.label += weight + " ";
+
+    var style = this.normalizedStyle(computed.fontStyle);
+    if(style)
+      font.label += style + " ";
+    font.label += family + " ";
+
+    var urls = contextfontFace.getffUrls(doc, family);
+    var url = contextfontFace.getffUrl(doc, family, computed);
+    if(urls) {
+      download.hidden = false;
+      download.label = "<" + url + "> " + urls.join(" ");
+    }
   }
 };
 
