@@ -23,13 +23,17 @@ contextfontFace = {
     var stylesheets = this.allStyleSheets(doc);
     var ffRules = [];
     for(var i = 0; i < stylesheets.length; i++) {
-      var rules = stylesheets[i].cssRules;
+      var stylesheet = stylesheets[i];
+      var rules = stylesheet.cssRules;
       for(var j = 0; j < rules.length; j++) {
         var rule = rules[j];
         if(rule.type == CSSRule.FONT_FACE_RULE) {
           var ffFamily = rule.style.getPropertyValue("font-family");
-          if(this.sameFamily(ffFamily, fontFamily))
+          if(this.sameFamily(ffFamily, fontFamily)) {
+            var href = stylesheet.href;
+            rule.href = href ? href : content.location.href; // so we can resolve the src
             ffRules.push(rule);
+          }
         }
       }
     }
@@ -38,29 +42,45 @@ contextfontFace = {
 
   getffUrls : function(doc, fontFamily) {
     var rules = this.getffRules(doc, fontFamily);
-    return rules.map(function(rule) {
-         return contextfontFace.getUrl(rule.style.getPropertyValue("src")) });
+    var urls = rules.map(function(rule) {
+         return contextfontFace.getResolvedUrl(rule) });
+    return urls.filter(function(item){return item;});
   },
 
   getffUrl : function(doc, fontFamily, computed) {
     var rules = this.getffRules(doc, fontFamily);
-    alert(rules.length + " rules for font-family " + fontFamily);
-    var src = '';
+    var matching;
     for(var i = 0; i < rules.length; i++) {
       var rule = rules[i];
       if(this.isMatching(rule, computed))
-        src = rule.style.getPropertyValue("src");
+        matching = rule;
       if(this.isExact(rule, computed))
-        return this.getUrl(rule.style.getPropertyValue("src")); 
+        return this.getResolvedUrl(rule); 
     }
-    return this.getUrl(src);
+    if(matching)
+      return this.getResolvedUrl(matching);
   },
 
-  getUrl : function(propertyValue) {
+  getUrl : function(rule) {
+    var src = rule.style.getPropertyValue("src");
+    if(/url\(\'?\"?data/.test(src))
+      return; // we don't to data urls
+
     var urlExp = /url\(\"?\'?(.+?)\"?\'?\)/;
-    matches = urlExp.exec(propertyValue);
+    matches = urlExp.exec(src);
     if(matches)
       return matches[1];
+  },
+
+  getResolvedUrl : function(rule) {
+    var url = this.getUrl(rule);
+    if(!url)
+      return;
+    if(contextfont.isAbsolute(url))
+      return contextfont.prePath(rule.href) + url;
+    if(contextfont.isUrl(url))
+      return url;
+    return contextfont.dirName(rule.href) + url;
   },
 
   getLocals : function(propertyValue) {
@@ -71,7 +91,18 @@ contextfontFace = {
     return locals;
   },
 
-  /* NOT IN USE */
+  formatSupported : function(rule) {
+    /* var src = rule.style.getPropertyValue("src");
+    var matches = src.match(/format\(\"?\'?(.+?)\"?\'?\)/);
+    if(matches)
+      var format = matches[1];
+    else */
+    var url = this.getUrl(rule);
+    var format = contextfont.extension(url);
+    return ["woff", "otf", "ttf"].indexOf(format) != -1;
+  },
+
+  /* SKETCHY HOUSE OF CARDS */
   isMatching : function(rule, computed) {
     var ffWeight = rule.style.getPropertyValue("font-weight");
     var ffStyle = rule.style.getPropertyValue("font-style");
@@ -79,7 +110,8 @@ contextfontFace = {
     var weight = computed.fontWeight;
     var style = computed.fontStyle;
 
-    return this.matchingWeight(ffWeight, weight) 
+    return this.formatSupported(rule) 
+      && this.matchingWeight(ffWeight, weight) 
       && this.matchingStyle(ffStyle, style);
   },
 
@@ -90,7 +122,8 @@ contextfontFace = {
     var weight = computed.fontWeight;
     var style = computed.fontStyle;
     
-    return this.sameWeight(ffWeight, weight) 
+    return this.formatSupported(rule)
+      && this.sameWeight(ffWeight, weight) 
       && this.sameStyle(ffStyle, style);
   },
    
@@ -102,20 +135,19 @@ contextfontFace = {
   sameWeight : function(fontWeight, computedWeight) {
     if(fontWeight == computedWeight)
       return true;
-    if(computedWeight == '400'
-       && (fontWeight == '' || fontWeight == 'normal'))
+    if(computedWeight == 400
+       && (!fontWeight || fontWeight == 'normal'))
       return true;
-    if(computedWeight == '700' && fontWeight == 'bold')
+    if(computedWeight == 700  && fontWeight == 'bold') // 'bolder' can be 401+
       return true;
     if(computedWeight == 'bolder' && fontWeight == 'bold')
       return true;
-    // bolder, lighter
-
     return false;
   },
 
   matchingWeight : function(fontWeight, computedWeight) {
     return this.sameWeight(fontWeight, computedWeight)
+     || (computedWeight > 400 && fontWeight == 'bold')
      || !fontWeight;
   },
 

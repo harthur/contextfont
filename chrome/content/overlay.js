@@ -57,14 +57,56 @@ contextfont = {
     return style;
   },
 
+  normalizedVariant : function(variant) {
+    if(variant == 'normal')
+      return '';
+    return variant;
+  },
+
+  isUrl : function(url) {
+    return url.match(/(\:\/\/)|(www\.)/);
+  },
+
+  isAbsolute : function(url) {
+    return url.match(/^\/.+/);
+  },
+
+  dirName : function(url) {
+    var matches = url.match(/^(.*\/)(.+)$/);
+    if(matches)
+      return matches[1];
+    return url;
+  },
+
+  baseName : function(path) {
+    var matches = path.match(/^(?:.*)\/(.+)$/);
+    if(matches)
+      return matches[1];
+    return path;
+  },
+
+  extension : function(path) {
+    var matches = path.match(/^(?:.*)\.(.+)$/);
+    if(matches)
+      return matches[1];
+    return path;
+  },
+
+  prePath : function(url) {
+    var ioService = Components.classes["@mozilla.org/network/io-service;1"]  
+                    .getService(Components.interfaces.nsIIOService);  
+    return ioService.newURI(url, null, null).prePath;  
+  },
+
+  downloadFont : function(url) {
+    gBrowser.loadURI(url);
+  },
 
   menuShowing : function(event) {
     var separator = document.getElementById("context-contextfont-separator");
     var font = document.getElementById("context-contextfont-font");
-    var fontface = document.getElementById("context-contextfont-fontface");
     var download = document.getElementById("context-contextfont-download");
-    fontface.hidden = true;
-    download.hidden = true;
+    var dlMenu = document.getElementById("context-contextfont-downloads");
 
     if(!getBrowserSelection()) {
       separator.hidden = true;
@@ -85,21 +127,48 @@ contextfont = {
     var size = this.getFontSize(elem);
     var family = this.getFontFamily(elem);
     
-    font.label = size + " ";
-    var weight = this.normalizedWeight(computed.fontWeight);
-    if(weight)
-      font.label += weight + " ";
-
-    var style = this.normalizedStyle(computed.fontStyle);
-    if(style)
-      font.label += style + " ";
-    font.label += family + " ";
-
+    var label = [this.getFontSize(elem),
+      this.normalizedWeight(computed.fontWeight),
+      this.normalizedStyle(computed.fontStyle),
+      this.normalizedVariant(computed.fontVariant),
+      family];
+    label = label.filter(function(item) { return item; });
+    font.label = label.join(" ");
+    
     var urls = contextfontFace.getffUrls(doc, family);
     var url = contextfontFace.getffUrl(doc, family, computed);
-    if(urls) {
+    this.urls = urls;
+    this.url = url;
+
+    if(urls.length == 1) {
       download.hidden = false;
-      download.label = "<" + url + "> " + urls.join(" ");
+      download.value = urls[0];
+      download.label = "download " + this.baseName(urls[0]);
+      download.oncommand = "function() {contextfont.downloadFont('" + urls[0] + "')";
+    }
+    else
+      download.hidden = true;
+
+    if(urls.length > 1)
+      dlMenu.hidden = false;
+    else
+      dlMenu.hidden = true;
+  },
+   
+  downloadShowing : function() {
+    urlsMenu = document.getElementById("context-contextfont-urls");
+    while(urlsMenu.firstChild)
+      urlsMenu.removeChild(urlsMenu.firstChild);
+
+    for(var i = 0; i < this.urls.length; i++) {
+      var menuitem = document.createElement("menuitem");
+      var url = this.urls[i];
+
+      if(url == this.url) 
+        menuitem.style.fontWeight = "bold";
+      menuitem.setAttribute("label", this.baseName(url));
+      menuitem.setAttribute("oncommand", "contextfont.downloadFont('" + url + "')");
+      urlsMenu.appendChild(menuitem);
     }
   }
 };

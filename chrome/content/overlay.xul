@@ -10,8 +10,10 @@
   <popup id="contentAreaContextMenu">
     <menuseparator id="context-contextfont-separator"/>
     <menuitem id="context-contextfont-font"/>
-    <menuitem id="context-contextfont-fontface"/>
     <menuitem id="context-contextfont-download"/>
+    <menu id="context-contextfont-downloads" label="download font">
+      <menupopup id="context-contextfont-urls" onpopupshowing="contextfont.downloadShowing()"/>
+    </menu>
   </popup>
 
 </overlay>
