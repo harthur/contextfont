@@ -1,8 +1,1 @@
-<!ENTITY contextfont.label "Your localized menuitem">
-<!ENTITY contextfontContext.label "Your Menuitem">
-<!ENTITY contextfontContext.accesskey "Y">
-<!ENTITY contextfontToolbarButton.label "Your Toolbar Button">
-<!ENTITY contextfontToolbarButton.tooltip "This is your toolbar button!">
-<!ENTITY contextfontSidebar.label "Your Sidebar">
-<!ENTITY contextfontToolbar.name  "example">
-<!ENTITY contextfontToolbar.label "This is an example toolbar. You can hide it under View &gt; toolbars &gt; &contextfontToolbar.name;">
+<!ENTITY contextfont.download "download font">

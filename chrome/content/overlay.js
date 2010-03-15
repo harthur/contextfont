@@ -63,6 +63,10 @@ contextfont = {
     return variant;
   },
 
+  identity : function(item) {
+    return item;
+  },
+
   isUrl : function(url) {
     return url.match(/(\:\/\/)|(www\.)/);
   },
@@ -132,19 +136,20 @@ contextfont = {
       this.normalizedStyle(computed.fontStyle),
       this.normalizedVariant(computed.fontVariant),
       family];
-    label = label.filter(function(item) { return item; });
+    label = label.filter(this.identity);
     font.label = label.join(" ");
     
     var urls = contextfontFace.getffUrls(doc, family);
-    var url = contextfontFace.getffUrl(doc, family, computed);
+    var matching = contextfontFace.getMatchingUrls(doc, family, computed);
     this.urls = urls;
-    this.url = url;
+    this.matching = matching;
 
     if(urls.length == 1) {
       download.hidden = false;
       download.value = urls[0];
-      download.label = "download " + this.baseName(urls[0]);
-      download.oncommand = "function() {contextfont.downloadFont('" + urls[0] + "')";
+      var strings = document.getElementById("contextfont-strings");
+      download.label = strings.getString("download") + " " + this.baseName(urls[0]);
+      download.setAttribute("oncommand", "contextfont.downloadFont('" + urls[0] + "')");
     }
     else
       download.hidden = true;
@@ -164,7 +169,7 @@ contextfont = {
       var menuitem = document.createElement("menuitem");
       var url = this.urls[i];
 
-      if(url == this.url) 
+      if(this.matching.indexOf(url) != -1) 
         menuitem.style.fontWeight = "bold";
       menuitem.setAttribute("label", this.baseName(url));
       menuitem.setAttribute("oncommand", "contextfont.downloadFont('" + url + "')");

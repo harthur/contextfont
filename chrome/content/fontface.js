@@ -43,11 +43,12 @@ contextfontFace = {
   getffUrls : function(doc, fontFamily) {
     var rules = this.getffRules(doc, fontFamily);
     var urls = rules.map(function(rule) {
-         return contextfontFace.getResolvedUrl(rule) });
-    return urls.filter(function(item){return item;});
+         return contextfontFace.getResolvedUrls(rule).filter(contextfont.identity)});
+    var urls = urls.reduce(function(a,b) {return a.concat(b)}, []);
+    return urls;
   },
 
-  getffUrl : function(doc, fontFamily, computed) {
+  getMatchingUrls : function(doc, fontFamily, computed) {
     var rules = this.getffRules(doc, fontFamily);
     var matching;
     for(var i = 0; i < rules.length; i++) {
@@ -55,32 +56,36 @@ contextfontFace = {
       if(this.isMatching(rule, computed))
         matching = rule;
       if(this.isExact(rule, computed))
-        return this.getResolvedUrl(rule); 
+        return this.getResolvedUrls(rule); 
     }
     if(matching)
-      return this.getResolvedUrl(matching);
+      return this.getResolvedUrls(matching);
   },
 
-  getUrl : function(rule) {
+  getUrls : function(rule) {
     var src = rule.style.getPropertyValue("src");
-    if(/url\(\'?\"?data/.test(src))
-      return; // we don't to data urls
-
-    var urlExp = /url\(\"?\'?(.+?)\"?\'?\)/;
-    matches = urlExp.exec(src);
-    if(matches)
-      return matches[1];
+    var urlExp = /url\(\"?\'?(.+?)\"?\'?\)/g;
+    var urls = [];
+    while(matches = urlExp.exec(src)) {
+      var url = matches[1];
+      if(!/^data\:/.test(url)) // we don't to data urls
+        urls.push(url);
+    }
+    return urls;
   },
 
-  getResolvedUrl : function(rule) {
-    var url = this.getUrl(rule);
-    if(!url)
-      return;
-    if(contextfont.isAbsolute(url))
-      return contextfont.prePath(rule.href) + url;
-    if(contextfont.isUrl(url))
+  getResolvedUrls : function(rule) {
+    var paths = this.getUrls(rule);
+    var href = rule.href;
+    return paths.map(function(path) { return contextfontFace.getResolvedUrl(href, path); })
+  },
+
+  getResolvedUrl : function(href, path) {
+    if(contextfont.isAbsolute(path))
+      return contextfont.prePath(href) + path;
+    if(contextfont.isUrl(path))
       return url;
-    return contextfont.dirName(rule.href) + url;
+    return contextfont.dirName(href) + path;
   },
 
   getLocals : function(propertyValue) {
@@ -97,12 +102,18 @@ contextfontFace = {
     if(matches)
       var format = matches[1];
     else */
-    var url = this.getUrl(rule);
-    var format = contextfont.extension(url);
-    return ["woff", "otf", "ttf"].indexOf(format) != -1;
+   
+    // assumes font file has a standard extension like .otf or .woff
+    var urls = this.getUrls(rule);
+    for(var i = 0; i < urls.length; i++) {
+      var format = contextfont.extension(urls[i]);
+      if(["woff", "otf", "ttf"].indexOf(format) != -1)
+        return true;
+    }
+    return false;
   },
 
-  /* SKETCHY HOUSE OF CARDS */
+  /* THIS PART SUCKS! */
   isMatching : function(rule, computed) {
     var ffWeight = rule.style.getPropertyValue("font-weight");
     var ffStyle = rule.style.getPropertyValue("font-style");
@@ -138,7 +149,7 @@ contextfontFace = {
     if(computedWeight == 400
        && (!fontWeight || fontWeight == 'normal'))
       return true;
-    if(computedWeight == 700  && fontWeight == 'bold') // 'bolder' can be 401+
+    if(computedWeight == 700  && fontWeight == 'bold')
       return true;
     if(computedWeight == 'bolder' && fontWeight == 'bold')
       return true;
