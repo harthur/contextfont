@@ -76,7 +76,7 @@ contextfont = {
   },
 
   dirName : function(url) {
-    var matches = url.match(/^(.*\/)(.+)$/);
+    var matches = url.match(/^(.*\/)(.*)$/);
     if(matches)
       return matches[1];
     return url;
@@ -115,6 +115,8 @@ contextfont = {
     if(!getBrowserSelection()) {
       separator.hidden = true;
       font.hidden = true;
+      download.hidden = true;
+      dlMenu.hidden = true;
       return;
     }
     separator.hidden = false;
@@ -127,8 +129,6 @@ contextfont = {
 
     var doc = elem.ownerDocument;
     var computed = doc.defaultView.getComputedStyle(elem, null);
-
-    var size = this.getFontSize(elem);
     var family = this.getFontFamily(elem);
     
     var label = [this.getFontSize(elem),
