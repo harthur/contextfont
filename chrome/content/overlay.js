@@ -106,6 +106,12 @@ contextfont = {
     gBrowser.loadURI(url);
   },
 
+  copy : function(string) {
+    var clipboard = Components.classes["@mozilla.org/widget/clipboardhelper;1"]
+	                .getService(Components.interfaces.nsIClipboardHelper);
+    clipboard.copyString(string);
+  },
+
   menuShowing : function(event) {
     var separator = document.getElementById("context-contextfont-separator");
     var font = document.getElementById("context-contextfont-font");
@@ -138,6 +144,7 @@ contextfont = {
       family];
     label = label.filter(this.identity);
     font.label = label.join(" ");
+    font.setAttribute("oncommand", "contextfont.copy('" + family + "');");
     
     var urls = contextfontFace.getffUrls(doc, family);
     var matching = contextfontFace.getMatchingUrls(doc, family, computed);
